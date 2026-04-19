@@ -1,0 +1,10 @@
+dev/
+
+__pycache__/
+
+.env
+.misc/
+.codex
+.python-version
+proj.zip
+data/
