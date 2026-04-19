@@ -163,18 +163,45 @@ def process_image_eyes(image_id: int, hash:str, db: Session) -> bool:
         return False
 
 def batch_process_images(db: Session) -> None:
-    """Process all images that don't have cropped eyes yet"""
-    try:
-        # Получаем изображения, для которых еще нет вырезанных глаз
-        images_with_no_eyes = db.query(Image.image_id, Image.hash).outerjoin(
-            CroppedEye, Image.image_id == CroppedEye.image_id
-        ).filter(CroppedEye.eye_id == None).all()
+    """
+    Обрабатывает пакет изображений для вырезания глаз.
+    
+    Логика:
+    1. Выбирает изображения со статусом 'pending' (или NULL), лимитируя выборку batch_size.
+    2. Для каждого изображения вызывает процесс кроппинга.
+    3. Если кроппинг успешен -> обновляет статус изображения на 'cropped'.
+    4. Если ошибка -> статус не меняется (останется 'pending'), чтобы повторить позже.
+    """
 
-        for (image_id, hash) in images_with_no_eyes:
-            process_image_eyes(image_id, hash, db)
+    images_to_process = db.query(Image.image_id, Image.hash).filter(
+        Image.state == 'new'
+    ).all()
 
-    except Exception as e:
-        print(f"Batch processing error: {str(e)}")
+    if not images_to_process:
+        print("No images pending for eye cropping.")
+        return
+
+    print(f"Starting batch processing for {len(images_to_process)} images...")
+
+    processed_count = 0
+    error_count = 0
+
+    for image_id, hash_val in images_to_process:
+        try:
+            process_image_eyes(image_id, hash_val, db)
+            
+            db.query(Image).filter(Image.image_id == image_id).update(
+                {"state": 'cropped'}
+            )
+            processed_count += 1
+            db.commit() 
+            
+        except Exception as e:
+            error_count += 1
+            print(f"Error processing image {image_id}: {str(e)}")
+            db.rollback()
+
+    print(f"Batch finished. Successfully processed: {processed_count}, Errors: {error_count}")
 
 if __name__ == '__main__':
     with SessionLocal() as conn:

@@ -15,6 +15,7 @@ class Image(Base):
     created_date = Column(Date)
     state = Column(String)
     hash = Column(String)
+    image_number = Column(String)
     
     # Связь с вырезанными глазами
     cropped_eyes = relationship("CroppedEye", back_populates="image", passive_deletes=True)
@@ -36,6 +37,7 @@ class CroppedEye(Base):
     has_red_eye = Column(Boolean, default=None)  
     created_date = Column(DateTime, default=datetime.utcnow)
     processed_date = Column(DateTime)
+    rejecting_reason = Column(String)
     
     image = relationship("Image", back_populates="cropped_eyes")
 
