@@ -16,7 +16,8 @@ class Image(Base):
     state = Column(String)
     
     # Связь с вырезанными глазами
-    cropped_eyes = relationship("CroppedEye", back_populates="image", cascade="all, delete-orphan")
+    cropped_eyes = relationship("CroppedEye", back_populates="image", passive_deletes=True)
+    face_bbox = relationship("ImageFaceBbox", back_populates="image")
 
 class CroppedEye(Base):
     __tablename__ = "cropped_eyes"
@@ -35,3 +36,15 @@ class CroppedEye(Base):
     processed_date = Column(DateTime)
     
     image = relationship("Image", back_populates="cropped_eyes")
+
+class ImageFaceBbox(Base):
+    __tablename__ = "image_face_bbox"
+    __table_args__ = {"schema": "uploaded_images"}
+    
+    image_id = Column(Integer, ForeignKey("uploaded_images.images.image_id"), nullable=False)
+    x_coord = Column(Integer) 
+    y_coord = Column(Integer) 
+    width = Column(Integer) 
+    height = Column(Integer) 
+    
+    image = relationship("Image", back_populates="face_bbox")

@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from dotenv import load_dotenv
+from datetime import datetime
 
 from scripts.connect.database import minio_client, SessionLocal
-from scripts.connect.models import Image
+from scripts.connect.models import Image, CroppedEye  # Добавлен импорт CroppedEye
 
-DF_LANDMARKS = pd.read_csv('data\celeba\list_landmarks_align_celeba.csv')
+DF_LANDMARKS = pd.read_csv('data\\celeba\\list_landmarks_align_celeba.csv')
 TARGET_W = 128
 TARGET_H = 96
 
@@ -37,8 +38,8 @@ class EyeBox:
 
 def get_eyes_coords(file_name:str, df:DataFrame) -> tuple:
     obj = df.query(f'image_id = {file_name}')
-    left_eye = Eye(obj['lefteye_x'], obj['lefteye_y'])
-    right_eye = Eye(obj['righteye_x'], obj['righteye_y'])
+    left_eye = Eye(obj['lefteye_x'].values[0], obj['lefteye_y'].values[0])
+    right_eye = Eye(obj['righteye_x'].values[0], obj['righteye_y'].values[0])
     return (left_eye, right_eye)
 
 def calculate_distance(left_x:int, left_y:int, right_x:int, right_y:int) -> float:
@@ -91,14 +92,14 @@ def save_eye_to_minio(eye_image: np.ndarray, image_id: str, eye_type: str) -> st
     except S3Error as e:
         raise Exception(f"MinIO error: {str(e)}")
 
-def process_image_eyes(image_id: str, db: Session) -> bool:
+def process_image_eyes(image_id: int, db: Session) -> bool:  # image_id теперь int
     try:
-        image_obj = db.query(Image).filter(Image.id == image_id).first()
+        image_obj = db.query(Image).filter(Image.image_id == image_id).first()  # Исправлено поле
         if not image_obj:
             print(f"Image {image_id} not found in database")
             return False
         
-        response = minio_client.get_object("red-eye-detector", image_obj.s3_path)
+        response = minio_client.get_object("red-eye-detector", image_obj.image_minio_key)  # Исправлено поле
         image_bytes = response.read()
         image = decode_image_from_bytes(image_bytes)
         
@@ -114,8 +115,33 @@ def process_image_eyes(image_id: str, db: Session) -> bool:
         left_path = save_eye_to_minio(left_cropped, str(image_id), "left")
         right_path = save_eye_to_minio(right_cropped, str(image_id), "right")
         
-        image_obj.left_eye_path = left_path
-        image_obj.right_eye_path = right_path
+        # Создаем записи в таблице CroppedEye вместо сохранения в Image
+        left_eye_record = CroppedEye(
+            image_id=image_obj.image_id,
+            eye_type="left",
+            minio_key=left_path,
+            width=TARGET_W,
+            height=TARGET_H,
+            is_valid_eye=True,
+            quality_score=0.0,
+            has_red_eye=None,
+            processed_date=datetime.utcnow()
+        )
+        
+        right_eye_record = CroppedEye(
+            image_id=image_obj.image_id,
+            eye_type="right",
+            minio_key=right_path,
+            width=TARGET_W,
+            height=TARGET_H,
+            is_valid_eye=True,
+            quality_score=0.0,
+            has_red_eye=None,
+            processed_date=datetime.utcnow()
+        )
+        
+        db.add(left_eye_record)
+        db.add(right_eye_record)
         db.commit()
         
         print(f"Successfully processed eyes for image {image_id}")
@@ -130,18 +156,19 @@ def process_image_eyes(image_id: str, db: Session) -> bool:
         return False
 
 def batch_process_images(db: Session) -> None:
-    """Process all images in database"""
+    """Process all images that don't have cropped eyes yet"""
     try:
-        images = db.query(Image).filter(Image.left_eye_path == None).all()
-        for image in images:
-            process_image_eyes(image.id, db)
+        # Получаем изображения, для которых еще нет вырезанных глаз
+        images_with_no_eyes = db.query(Image.image_id).outerjoin(
+            CroppedEye, Image.image_id == CroppedEye.image_id
+        ).filter(CroppedEye.eye_id == None).all()
+        
+        for (image_id,) in images_with_no_eyes:
+            process_image_eyes(image_id, db)
+            
     except Exception as e:
         print(f"Batch processing error: {str(e)}")
 
 if __name__ == '__main__':
     with SessionLocal() as conn:
         batch_process_images(conn)
-    
-
-
-
