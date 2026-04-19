@@ -18,6 +18,7 @@ class Image(Base):
     # Связь с вырезанными глазами
     cropped_eyes = relationship("CroppedEye", back_populates="image", passive_deletes=True)
     face_bbox = relationship("ImageFaceBbox", back_populates="image")
+    eyes_coords = relationship("ImageEyesCoords", back_populates="image")
 
 class CroppedEye(Base):
     __tablename__ = "cropped_eyes"
@@ -48,3 +49,16 @@ class ImageFaceBbox(Base):
     height = Column(Integer) 
     
     image = relationship("Image", back_populates="face_bbox")
+
+
+class ImageEyesCoords(Base):
+    __tablename__ = "image_eyes_coords"
+    __table_args__ = {"schema": "uploaded_images"}
+    
+    image_id = Column(Integer, ForeignKey("uploaded_images.images.image_id"), nullable=False)
+    lefteye_x = Column(Integer) 
+    lefteye_y = Column(Integer) 
+    righteye_x = Column(Integer) 
+    righteye_y = Column(Integer) 
+    
+    image = relationship("Image", back_populates="eyes_coords")
