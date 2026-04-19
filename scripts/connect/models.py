@@ -14,11 +14,12 @@ class Image(Base):
     split = Column(String)
     created_date = Column(Date)
     state = Column(String)
+    hash = Column(String)
     
     # Связь с вырезанными глазами
     cropped_eyes = relationship("CroppedEye", back_populates="image", passive_deletes=True)
-    face_bbox = relationship("ImageFaceBbox", back_populates="image")
-    eyes_coords = relationship("ImageEyesCoords", back_populates="image")
+    face_bbox = relationship("ImageFaceBbox", back_populates="image", passive_deletes=True)
+    eyes_coords = relationship("ImageEyesCoords", back_populates="image", passive_deletes=True)
 
 class CroppedEye(Base):
     __tablename__ = "cropped_eyes"
@@ -42,6 +43,7 @@ class ImageFaceBbox(Base):
     __tablename__ = "image_face_bbox"
     __table_args__ = {"schema": "uploaded_images"}
     
+    bbox_id = Column(Integer, primary_key=True, autoincrement=True)
     image_id = Column(Integer, ForeignKey("uploaded_images.images.image_id"), nullable=False)
     x_coord = Column(Integer) 
     y_coord = Column(Integer) 
@@ -55,6 +57,7 @@ class ImageEyesCoords(Base):
     __tablename__ = "image_eyes_coords"
     __table_args__ = {"schema": "uploaded_images"}
     
+    coords_id = Column(Integer, primary_key=True, autoincrement=True)
     image_id = Column(Integer, ForeignKey("uploaded_images.images.image_id"), nullable=False)
     lefteye_x = Column(Integer) 
     lefteye_y = Column(Integer) 

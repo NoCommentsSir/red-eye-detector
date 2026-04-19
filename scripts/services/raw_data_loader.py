@@ -50,7 +50,7 @@ def load_file_to_minio(client:Minio, bucket_name:str, file_path:Path, source:str
 
     if check_file_in_minio(client, bucket_name, minio_name):
         print(f'Skip existing: {minio_name}')
-        return minio_name
+        return minio_name, uid
 
     try:
         client.fput_object(
@@ -59,14 +59,14 @@ def load_file_to_minio(client:Minio, bucket_name:str, file_path:Path, source:str
             str(file_path),
             content_type='image/jpeg'
         )
-        return minio_name
+        return minio_name, uid
     except Exception as e:
         print(f"Failed to load a file: {e}")
         raise
     
-def load_file_to_postgres(client:Session, file_name:str, uid:str, split:str) -> int:
+def load_file_to_postgres(client:Session, file_name:str, minio_name:str, split:str, uid:str) -> int:
     """Загружает изображение из папки в Postgres"""
-    image = Image(source_name='celebA', image_name=file_name, image_minio_key=uid, split=split, created_date=datetime.date.today(), state='new')
+    image = Image(source_name='celebA', image_name=file_name, image_minio_key=minio_name, split=split, created_date=datetime.date.today(), state='new', hash=uid)
     client.add(image)
     client.commit()
     return image.image_id
@@ -81,10 +81,10 @@ def load_images_to_db(minio_client:Minio, postgres_client:Session, folder:Path, 
         try:
             cnt += 1
             split = 'train'
-            minio_key = load_file_to_minio(minio_client, bucket_name, item, 'celebA')
+            minio_key, uid = load_file_to_minio(minio_client, bucket_name, item, 'celebA')
             if cnt > MAX_COUNT:
                 return
-            load_file_to_postgres(postgres_client, item.name, minio_key, split,)
+            load_file_to_postgres(postgres_client, item.name, minio_key, split, uid)
         except SQLAlchemyError as se:
             print(f"Failed to load a file to Postgres: {se}")
             minio_client.remove_object(bucket_name, minio_key)

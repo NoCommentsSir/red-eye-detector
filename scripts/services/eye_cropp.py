@@ -1,20 +1,22 @@
 from minio import Minio, S3Error
-from pandas import DataFrame
 import pandas as pd
 import numpy as np
-import io, cv2 as cv
+import io, os, cv2 as cv
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func
 from dotenv import load_dotenv
 from datetime import datetime
+from dotenv import load_dotenv
+from pathlib import Path
 
 from scripts.connect.database import minio_client, SessionLocal
-from scripts.connect.models import Image, CroppedEye  # Добавлен импорт CroppedEye
+from scripts.connect.models import Image, CroppedEye, ImageEyesCoords
 
-DF_LANDMARKS = pd.read_csv('data\\celeba\\list_landmarks_align_celeba.csv')
 TARGET_W = 128
 TARGET_H = 96
+
+load_dotenv()
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "red-eye-detection")
 
 class Eye:
     x: int
@@ -36,10 +38,14 @@ class EyeBox:
         self.x2 = x2
         self.y2 = y2
 
-def get_eyes_coords(file_name:str, df:DataFrame) -> tuple:
-    obj = df.query(f'image_id = {file_name}')
-    left_eye = Eye(obj['lefteye_x'].values[0], obj['lefteye_y'].values[0])
-    right_eye = Eye(obj['righteye_x'].values[0], obj['righteye_y'].values[0])
+def get_eyes_coords_from_db(image_id: int, db: Session) -> tuple:
+    """Получаем координаты глаз из базы данных PostgreSQL"""
+    coords = db.query(ImageEyesCoords).filter(ImageEyesCoords.image_id == image_id).first()
+    if not coords:
+        raise ValueError(f"No eye coordinates found for image_id {image_id}")
+
+    left_eye = Eye(coords.lefteye_x, coords.lefteye_y)
+    right_eye = Eye(coords.righteye_x, coords.righteye_y)
     return (left_eye, right_eye)
 
 def calculate_distance(left_x:int, left_y:int, right_x:int, right_y:int) -> float:
@@ -67,10 +73,10 @@ def crop_eye_image(image: np.ndarray, eye_box: EyeBox) -> np.ndarray:
     y1 = max(0, eye_box.y1)
     x2 = min(w, eye_box.x2)
     y2 = min(h, eye_box.y2)
-    
+
     if x1 >= x2 or y1 >= y2:
         raise ValueError("Invalid crop coordinates")
-    
+
     cropped = image[y1:y2, x1:x2]
     resized = cv.resize(cropped, (TARGET_W, TARGET_H))
     return resized
@@ -79,11 +85,11 @@ def save_eye_to_minio(eye_image: np.ndarray, image_id: str, eye_type: str) -> st
     success, buffer = cv.imencode('.png', eye_image)
     if not success:
         raise ValueError("Failed to encode image")
-    
-    object_name = f"eyes/{image_id}_{eye_type}.png"
+
+    object_name = f"raw/eyes/{image_id}_{eye_type}.png"
     try:
         minio_client.put_object(
-            "red-eye-detector",
+            f"{MINIO_BUCKET_NAME}",
             object_name,
             io.BytesIO(buffer.tobytes()),
             len(buffer)
@@ -92,30 +98,31 @@ def save_eye_to_minio(eye_image: np.ndarray, image_id: str, eye_type: str) -> st
     except S3Error as e:
         raise Exception(f"MinIO error: {str(e)}")
 
-def process_image_eyes(image_id: int, db: Session) -> bool:  # image_id теперь int
+def process_image_eyes(image_id: int, hash:str, db: Session) -> bool:
     try:
-        image_obj = db.query(Image).filter(Image.image_id == image_id).first()  # Исправлено поле
+        image_obj = db.query(Image).filter(Image.image_id == image_id).first()
         if not image_obj:
             print(f"Image {image_id} not found in database")
             return False
-        
-        response = minio_client.get_object("red-eye-detector", image_obj.image_minio_key)  # Исправлено поле
+
+        response = minio_client.get_object(f'{MINIO_BUCKET_NAME}', image_obj.image_minio_key)
         image_bytes = response.read()
         image = decode_image_from_bytes(image_bytes)
-        
-        left_eye, right_eye = get_eyes_coords(image_id, DF_LANDMARKS)
+
+        # Получаем координаты глаз из базы данных PostgreSQL
+        left_eye, right_eye = get_eyes_coords_from_db(image_id, db)
         distance = calculate_distance(left_eye.x, left_eye.y, right_eye.x, right_eye.y)
-        
+
         left_box = get_eye_box(left_eye, distance)
         right_box = get_eye_box(right_eye, distance)
-        
+
         left_cropped = crop_eye_image(image, left_box)
         right_cropped = crop_eye_image(image, right_box)
-        
-        left_path = save_eye_to_minio(left_cropped, str(image_id), "left")
-        right_path = save_eye_to_minio(right_cropped, str(image_id), "right")
-        
-        # Создаем записи в таблице CroppedEye вместо сохранения в Image
+
+        left_path = save_eye_to_minio(left_cropped, hash, "left")
+        right_path = save_eye_to_minio(right_cropped, hash, "right")
+
+        # Создаем записи в таблице CroppedEye
         left_eye_record = CroppedEye(
             image_id=image_obj.image_id,
             eye_type="left",
@@ -127,7 +134,7 @@ def process_image_eyes(image_id: int, db: Session) -> bool:  # image_id тепе
             has_red_eye=None,
             processed_date=datetime.utcnow()
         )
-        
+
         right_eye_record = CroppedEye(
             image_id=image_obj.image_id,
             eye_type="right",
@@ -139,14 +146,14 @@ def process_image_eyes(image_id: int, db: Session) -> bool:  # image_id тепе
             has_red_eye=None,
             processed_date=datetime.utcnow()
         )
-        
+
         db.add(left_eye_record)
         db.add(right_eye_record)
         db.commit()
-        
+
         print(f"Successfully processed eyes for image {image_id}")
         return True
-        
+
     except SQLAlchemyError as e:
         db.rollback()
         print(f"Database error: {str(e)}")
@@ -159,13 +166,13 @@ def batch_process_images(db: Session) -> None:
     """Process all images that don't have cropped eyes yet"""
     try:
         # Получаем изображения, для которых еще нет вырезанных глаз
-        images_with_no_eyes = db.query(Image.image_id).outerjoin(
+        images_with_no_eyes = db.query(Image.image_id, Image.hash).outerjoin(
             CroppedEye, Image.image_id == CroppedEye.image_id
         ).filter(CroppedEye.eye_id == None).all()
-        
-        for (image_id,) in images_with_no_eyes:
-            process_image_eyes(image_id, db)
-            
+
+        for (image_id, hash) in images_with_no_eyes:
+            process_image_eyes(image_id, hash, db)
+
     except Exception as e:
         print(f"Batch processing error: {str(e)}")
 
