@@ -1,5 +1,11 @@
-import kagglehub
+import kagglehub, os
 
-path = kagglehub.dataset_download("jessicali9530/celeba-dataset", output_dir="D:/red_eye_detector/data/celeba")
+def load_dataset_from_src(dataset:str, dir:str):
+    if os.path.exists(dir) and os.listdir(dir):
+        print("Dataset currently exists!")
+    else :
+        path = kagglehub.dataset_download(dataset, output_dir=dir)
+        print("Path to dataset files:", path)
 
-print("Path to dataset files:", path)
+if __name__ == '__main__':
+    pass

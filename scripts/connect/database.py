@@ -1,18 +1,18 @@
 import dotenv
 import os
 from minio import Minio
-from sqlalchemy import URL, create_engine
+from sqlalchemy.engine import URL, create_engine
 from sqlalchemy.orm import sessionmaker
 
 dotenv.load_dotenv()
 MINIO_USER = os.getenv("MINIO_USER", "admin")
 MINIO_PASS = os.getenv("MINIO_PASSWORD", "password")
 MINIO_PORT = os.getenv("MINIO_API_PORT", "9000")
-MINIO_HOST = os.getenv("MINIO_HOST", "localhost")
+MINIO_HOST = os.getenv("MINIO_HOST", "host.docker.internal")
 PG_USER = os.getenv("PG_USER", "postgres")
 PG_PASS = os.getenv("PG_PASSWORD", "password")
 PG_PORT = os.getenv("POSTGRES_PORT", "5432")
-PG_HOST = os.getenv("PG_HOST", "localhost")
+PG_HOST = os.getenv("PG_HOST", "host.docker.internal")
 PG_DB = os.getenv("PG_DB", "postgres")
 
 minio_client = Minio(

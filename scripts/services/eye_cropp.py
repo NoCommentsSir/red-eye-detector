@@ -129,7 +129,7 @@ def process_image_eyes(image_id: int, hash:str, db: Session) -> bool:
             minio_key=left_path,
             width=TARGET_W,
             height=TARGET_H,
-            is_valid_eye=True,
+            is_valid_eye=None,
             quality_score=0.0,
             has_red_eye=None,
             processed_date=datetime.utcnow()
@@ -141,7 +141,7 @@ def process_image_eyes(image_id: int, hash:str, db: Session) -> bool:
             minio_key=right_path,
             width=TARGET_W,
             height=TARGET_H,
-            is_valid_eye=True,
+            is_valid_eye=None,
             quality_score=0.0,
             has_red_eye=None,
             processed_date=datetime.utcnow()

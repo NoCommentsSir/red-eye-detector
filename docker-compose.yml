@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  airflow:
+    build: .
+    container_name: airflow
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW_UID: "50000"
+
+      _AIRFLOW_WWW_USER_USERNAME: "${AF_USER}"
+      _AIRFLOW_WWW_USER_PASSWORD: "${AF_PASS}"
+      _AIRFLOW_WWW_USER_FIRSTNAME: "Timur"
+      _AIRFLOW_WWW_USER_LASTNAME: "Rud"
+      _AIRFLOW_WWW_USER_ROLE: "Admin"
+      _AIRFLOW_WWW_USER_EMAIL: "timur@example.com"
+
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+
+      PYTHONPATH: /opt/airflow/app
+
+      PG_HOST: "host.docker.internal"
+      POSTGRES_PORT: "${POSTGRES_PORT}"
+      PG_DB: "${PG_DB}"
+      PG_USER: "${PG_USER}"
+      PG_PASSWORD: "${PG_PASSWORD}"
+
+      MINIO_ENDPOINT: "host.docker.internal:${MINIO_API_PORT}"
+      MINIO_HOST: "host.docker.internal"
+      MINIO_PORT: "${MINIO_API_PORT}"
+      MINIO_USER: "${MINIO_USER}"
+      MINIO_PASSWORD: "${MINIO_PASSWORD}"
+      MINIO_BUCKET_NAME: "${MINIO_BUCKET_NAME}"
+      MINIO_SECURE: "${MINIO_SECURE}"
+
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
+
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/app/scripts
+      - ./data:/opt/airflow/data
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    depends_on:
+      - mlflow
+
+    command: standalone
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    container_name: mlflow
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts

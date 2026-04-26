@@ -8,3 +8,8 @@ __pycache__/
 .python-version
 proj.zip
 data/
+
+airflow/logs/
+airflow/plugins/
+
+mlflow/

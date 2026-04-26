@@ -10,8 +10,6 @@ from dotenv import load_dotenv
 from scripts.connect.database import minio_client, SessionLocal
 from scripts.connect.models import Image
 
-BATCH_SIZE = 2000
-
 load_dotenv()
 PATH = os.getenv("IMAGES_PATH", "data/celeba/img_align_celeba/img_align_celeba")
 MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "red-eye-detection")
@@ -92,7 +90,7 @@ def get_image_number(filename: str) -> int | None:
         return int(match.group(1))
     return None
 
-def load_images_to_db(minio_client: Minio, postgres_client: Session, folder: Path, bucket_name: str):
+def load_images_to_db(minio_client: Minio, postgres_client: Session, folder: Path, bucket_name: str, batch_size:int):
     """
     Загружает изображения батчами.
     Логика:
@@ -124,8 +122,8 @@ def load_images_to_db(minio_client: Minio, postgres_client: Session, folder: Pat
         if current_number <= last_loaded_number:
             continue
 
-        if cnt_loaded >= BATCH_SIZE:
-            print(f"Batch limit ({BATCH_SIZE}) reached. Stopping.")
+        if cnt_loaded >= batch_size:
+            print(f"Batch limit ({batch_size}) reached. Stopping.")
             break
 
         try:
@@ -155,8 +153,4 @@ def load_images_to_db(minio_client: Minio, postgres_client: Session, folder: Pat
     print(f"Batch job finished. Total new files loaded: {cnt_loaded}")
         
 if __name__ == '__main__':
-    minio_client = minio_client
-    bucket_name = MINIO_BUCKET_NAME
-    with SessionLocal() as postgre_client:
-        load_images_to_db(minio_client, postgre_client, folder, bucket_name)
-
+    pass
