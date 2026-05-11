@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, String, Integer, ForeignKey, Date, Boolean, DateTime
+from sqlalchemy import Column, Float, String, Integer, ForeignKey, Date, SmallInteger, DateTime
 from datetime import datetime
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -21,6 +21,7 @@ class Image(Base):
     cropped_eyes = relationship("CroppedEye", back_populates="image", passive_deletes=True)
     face_bbox = relationship("ImageFaceBbox", back_populates="image", passive_deletes=True)
     eyes_coords = relationship("ImageEyesCoords", back_populates="image", passive_deletes=True)
+    val_marks = relationship("EyesMarkingValidation", back_populates="image", passive_deletes=True)
 
 class CroppedEye(Base):
     __tablename__ = "cropped_eyes"
@@ -32,14 +33,15 @@ class CroppedEye(Base):
     minio_key = Column(String, nullable=False) 
     width = Column(Integer, default=128)
     height = Column(Integer, default=96)
-    is_valid_eye = Column(Boolean, default=None) 
+    is_valid_eye = Column(SmallInteger, default=None) 
     quality_score = Column(Float, default=0.0)
-    has_red_eye = Column(Boolean, default=None)  
+    has_red_eye = Column(SmallInteger, default=None)  
     created_date = Column(DateTime, default=datetime.utcnow)
     processed_date = Column(DateTime)
     rejecting_reason = Column(String)
     
     image = relationship("Image", back_populates="cropped_eyes")
+    val_marks = relationship("EyesMarkingValidation", back_populates="eye", passive_deletes=True)
 
 class ImageFaceBbox(Base):
     __tablename__ = "image_face_bbox"
@@ -67,3 +69,20 @@ class ImageEyesCoords(Base):
     righteye_y = Column(Integer) 
     
     image = relationship("Image", back_populates="eyes_coords")
+
+class EyesMarkingValidation(Base):
+    __tablename__ = "manual_marking_validation"
+    __table_args__ = {"schema": "uploaded_images"}
+    
+    val_id = Column(Integer, primary_key=True, autoincrement=True)
+    eye_id = Column(Integer, ForeignKey("uploaded_images.cropped_eyes.eye_id"), nullable=False)
+    image_name = Column(String, nullable=False)
+    image_id = Column(Integer, ForeignKey("uploaded_images.images.image_id"), nullable=False)
+    eye_type = Column(String(10), nullable=False)
+    minio_key = Column(String)
+    is_valid_eye = Column(SmallInteger) 
+    rejecting_reason = Column(String)
+    split = Column(String)
+    
+    image = relationship("Image", back_populates="val_marks")
+    eye = relationship("CroppedEye", back_populates="val_marks")

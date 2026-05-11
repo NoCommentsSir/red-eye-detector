@@ -57,16 +57,16 @@ services:
     command: standalone
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.9.2
+    image: ghcr.io/mlflow/mlflow:v3.12.0
     container_name: mlflow
     restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      - ./mlflow:/mlflow
+      - ./mlflow_data:/mlflow_data
     command: >
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root /mlflow/artifacts
+      --backend-store-uri sqlite:////mlflow_data/mlflow.db
+      --default-artifact-root /mlflow_data/artifacts

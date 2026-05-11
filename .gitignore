@@ -12,4 +12,7 @@ data/
 airflow/logs/
 airflow/plugins/
 
-mlflow/
+mlflow_data/
+mlflow.db
+
+scripts/services/temporal.py

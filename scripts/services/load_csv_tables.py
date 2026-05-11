@@ -115,11 +115,61 @@ def load_images_eyes_coord(file_path:str, pg_params):
             except Exception as e:
                 pg_conn.rollback()
                 raise Exception(f"Error while integrating eyes coordinates: {e}")
+            
+def load_manual_eyes_validation(file_path:str, pg_params):
+    with psycopg.connect(**pg_params) as pg_conn:
+        with pg_conn.cursor() as pg_cur:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                
+                buff = io.BytesIO(content.encode("utf-8"))
+                pg_cur.execute("""
+                    CREATE TEMP TABLE t_validation(
+                        eye_id INT,
+                        image_name VARCHAR(256),
+                        image_id INT,
+                        eye_type VARCHAR(16),
+                        minio_key VARCHAR(1024),
+                        is_valid_eye SMALLINT,
+                        rejecting_reason VARCHAR(32),
+                        split VARCHAR(64)     
+                    ) ON COMMIT DROP;
+                """)
+
+                pg_cur.copy_expert("""
+                    COPY t_validation (eye_id,image_name,image_id,eye_type,minio_key,is_valid_eye,rejecting_reason,split)
+                    FROM STDIN WITH (FORMAT CSV, HEADER TRUE, DELIMITER ',')   
+                """, buff)
+
+                pg_cur.execute("""
+                    INSERT INTO uploaded_images.manual_marking_validation(eye_id,image_name,image_id,eye_type,minio_key,is_valid_eye,rejecting_reason,split)
+                    SELECT 
+                        tmp.eye_id,
+                        tmp.image_name,
+                        tmp.image_id,
+                        tmp.eye_type,
+                        tmp.minio_key,
+                        tmp.is_valid_eye,
+                        tmp.rejecting_reason,
+                        tmp.split
+                    FROM t_validation tmp
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM uploaded_images.manual_marking_validation mmv
+                        WHERE tmp.image_name = mmv.image_name
+                        AND tmp.eye_type = mmv.eye_type
+                    )
+                """)
+                pg_conn.commit()
+            except Exception as e:
+                pg_conn.rollback()
+                raise Exception(f"Error while integrating eyes coordinates: {e}")
 
 
 if __name__ == '__main__':
-    dir_path = "data/celeba"     
-    filename = "list_landmarks_align_celeba.csv"      
+    dir_path = "files"     
+    filename = "eyes_to_review_final_split.csv"      
     file_path = os.path.join(dir_path, filename)
     conn = {
         'host': "localhost",     
@@ -129,4 +179,4 @@ if __name__ == '__main__':
         'password': "secret_pass", 
         'connect_timeout': 10     
     }
-    load_images_eyes_coord(file_path, conn)
+    load_manual_eyes_validation(file_path, conn)
