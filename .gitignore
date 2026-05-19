@@ -7,6 +7,7 @@ __pycache__/
 .codex
 .python-version
 proj.zip
+
 data/
 
 airflow/logs/
@@ -16,3 +17,6 @@ mlflow_data/
 mlflow.db
 
 scripts/services/temporal.py
+
+ToDo.txt
+.venv/

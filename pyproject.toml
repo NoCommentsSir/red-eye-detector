@@ -29,3 +29,8 @@ description = ""
 authors = ["Timur"]
 package-mode = false
 
+
+[dependency-groups]
+annotation = [
+    "label-studio (>=1.23.0,<2.0.0)"
+]

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import mlflow
 from sklearn.metrics import f1_score, accuracy_score
 
-def evaluate(model, dataloader, criterion):
+def evaluate(model, dataloader, criterion, scheduler=None):
     model.eval()
 
     total_loss = 0.0
@@ -26,6 +26,8 @@ def evaluate(model, dataloader, criterion):
             all_preds.extend(preds.cpu().numpy())
 
     avg_loss = total_loss / len(dataloader)
+    if scheduler:
+        scheduler.step(avg_loss)
     accuracy = accuracy_score(all_labels, all_preds)
     macro_f1 = f1_score(all_labels, all_preds, average="macro")
     weighted_f1 = f1_score(all_labels, all_preds, average="weighted")
@@ -66,6 +68,9 @@ class LeNet(nn.Module):
     
 def fit_model(model:LeNet, trainloader, criterion, validloader, params):
     optimizer = optim.Adam(model.parameters(), params['lr'], params['betas'], params['eps'])
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6
+    )
     epoch_metrics = {
         "train_loss": [],
         "valid_loss": [],
@@ -85,7 +90,8 @@ def fit_model(model:LeNet, trainloader, criterion, validloader, params):
             optimizer.step()
             train_loss += batch_loss.item()
         train_loss = train_loss / len(trainloader)
-        valid_metrics = evaluate(model, validloader, criterion)
+        valid_metrics = evaluate(model, validloader, criterion, scheduler)
+        print(f"Step: {optimizer.param_groups[0]['lr']}")
         print(f"Epoch {_+1}, Loss: {train_loss}")
         epoch_metrics["train_loss"].append(train_loss)
         epoch_metrics["valid_loss"].append(valid_metrics["loss"])

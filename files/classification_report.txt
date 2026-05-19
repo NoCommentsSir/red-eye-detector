@@ -1,8 +1,8 @@
               precision    recall  f1-score   support
 
- invalid_eye       0.67      0.53      0.59        60
-   valid_eye       0.73      0.82      0.77        91
+ invalid_eye       0.52      0.58      0.55        60
+   valid_eye       0.70      0.65      0.67        91
 
-    accuracy                           0.71       151
-   macro avg       0.70      0.68      0.68       151
-weighted avg       0.70      0.71      0.70       151
+    accuracy                           0.62       151
+   macro avg       0.61      0.62      0.61       151
+weighted avg       0.63      0.62      0.63       151

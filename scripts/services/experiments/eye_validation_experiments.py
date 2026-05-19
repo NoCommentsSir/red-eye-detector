@@ -7,10 +7,10 @@ import mlflow
 import os
 from pathlib import Path
 from sklearn.metrics import classification_report
-from scripts.services.train_data_loader import EyeQualityDataset, pg_load_training_data
+from scripts.services.dataset_generation.train_data_loader import EyeQualityDataset, pg_load_training_data
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from scripts.models.EyeCroppValidator import LeNet, fit_model, evaluate
+from torchvision.models import resnet18, ResNet18_Weights
 
 def imshow(img):
     """Display a tensor image"""
@@ -49,14 +49,18 @@ def plot_loss_curve(history, output_path="files/loss_curve.png"):
     print(f"Loss curve saved to {output_path}")
 
 if __name__ == "__main__":
-    model = LeNet()
+    model = resnet18(weights=ResNet18_Weights.DEFAULT)
+    for param in model.parameters():
+        param.requires_grad = False
+    model.fc = nn.Linear(model.fc.in_features, 2)
+
     params = {
-            'lr': 3e-4, 
+            'lr': 1e-3, 
             'eps': 1e-8, 
-            'num_epochs': 25,
+            'num_epochs': 100,
             'betas': (0.9, 0.999),
             'batch_size': 32,
-            'model_name': 'LeNet1',
+            'model_name': 'ResNet',
             'dataset_version': 'v1.0',
             'image_size': (128, 96),
             'optimizer': 'Adam',

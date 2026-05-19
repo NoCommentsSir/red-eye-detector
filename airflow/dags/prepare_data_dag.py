@@ -1,8 +1,8 @@
-from scripts.services.installer import load_dataset_from_src
-from scripts.services.raw_data_loader import load_images_to_db
-from scripts.services.load_csv_tables import load_images_bbox, load_images_eyes_coord
-from scripts.services.eye_cropp import batch_process_images
-from scripts.services.audit_dataset import report_maker
+from scripts.services.data_loading.installer import load_dataset_from_src
+from scripts.services.data_loading.raw_data_loader import load_images_to_db
+from scripts.services.data_loading.load_csv_tables import load_images_bbox, load_images_eyes_coord
+from scripts.services.data_loading.eye_cropp import batch_process_images
+from scripts.services.data_loading.audit_dataset import report_maker
 from scripts.connect.database import minio_client, SessionLocal
 
 from pathlib import Path
