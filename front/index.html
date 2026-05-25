@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Red Eye Detector</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>Red Eye Detector</h1>
+      <p class="subtitle">Загрузите фото, дождитесь обработки и получите исправленное изображение.</p>
+
+      <div class="upload-box">
+        <input id="fileInput" type="file" accept="image/png,image/jpeg,image/jpg" />
+        <button id="uploadBtn">Обработать</button>
+      </div>
+
+      <div id="message" class="message hidden"></div>
+
+      <div id="statusBox" class="status-box hidden">
+        <p><b>Task ID:</b> <span id="taskId">-</span></p>
+        <p><b>Image ID:</b> <span id="imageId">-</span></p>
+        <p><b>Статус:</b> <span id="taskStatus">-</span></p>
+      </div>
+
+      <div class="images">
+        <div class="image-block">
+          <h2>Исходное фото</h2>
+          <img id="previewImage" class="hidden" alt="Исходное фото" />
+        </div>
+
+        <div class="image-block">
+          <h2>Результат</h2>
+          <img id="resultImage" class="hidden" alt="Результат обработки" />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

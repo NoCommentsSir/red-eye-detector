@@ -1,7 +1,7 @@
 import io
 import os
 from pathlib import Path
-
+from PIL import Image
 from scripts.connect.database import SessionLocal, get_minio_client
 from scripts.connect.models import CroppedEye
 

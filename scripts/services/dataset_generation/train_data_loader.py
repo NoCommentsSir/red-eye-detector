@@ -8,6 +8,14 @@ from torch.utils.data import Dataset, DataLoader
 from path import Path
 from PIL import Image
 
+reasons = {
+    'side_eye': 6,
+    'blur': 5,
+    'reflection': 4,
+    'hairs': 2,
+    'closed': 1,
+    'sun_glasses': 3
+}
 def pg_load_training_data():
     session = SessionLocal()
     try:
@@ -47,6 +55,9 @@ class EyeQualityDataset(Dataset):
         else:
             image_arr = np.array(image, dtype=np.float32)
             torch_image = torch.from_numpy(image_arr).permute(2, 0, 1).float() / 255.0
+        reason = 0
+        if rejecting_reason:
+            reason = reasons[rejecting_reason] 
         return torch_image, is_valid_eye   
 
 class SynthRedEyeDataset(Dataset):

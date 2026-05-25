@@ -1,0 +1,12 @@
+service: "service:RedEyeService"
+include:
+  - "service.py"
+  - "models/onnx/*.onnx"
+  - "models/onnx/*.onnx.data"
+
+python:
+  packages:
+    - "numpy"
+    - "pillow"
+    - "onnxruntime"
+    - "bentoml"

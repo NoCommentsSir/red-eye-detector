@@ -86,3 +86,25 @@ class EyesMarkingValidation(Base):
     
     image = relationship("Image", back_populates="val_marks")
     eye = relationship("CroppedEye", back_populates="val_marks")
+
+class InferenceImage(Base):
+    __tablename__ = "inference_input_images"
+    __table_args__ = {"schema": "uploaded_images"}
+    image_id = Column(Integer, primary_key=True, autoincrement=True) 
+    image_name = Column(String)
+    image_minio_input_key = Column(String)
+    image_minio_output_key = Column(String)
+    created_date = Column(Date)
+
+    tasks = relationship("Tasks", back_populates="images")
+
+class Tasks(Base):
+    __tablename__ = "tasks"
+    __table_args__ = {"schema": "uploaded_images"}
+    task_id = Column(Integer, primary_key=True, autoincrement=True) 
+    image_id = Column(Integer, ForeignKey("uploaded_images.inference_input_images.image_id"), nullable=False)
+    status = Column(String)
+    created_date = Column(Date)
+
+    images = relationship("InferenceImage", back_populates="tasks")
+    

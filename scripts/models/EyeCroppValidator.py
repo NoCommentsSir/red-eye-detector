@@ -67,7 +67,7 @@ class LeNet(nn.Module):
         return output
     
 def fit_model(model:LeNet, trainloader, criterion, validloader, params):
-    optimizer = optim.Adam(model.parameters(), params['lr'], params['betas'], params['eps'])
+    optimizer = optim.RMSprop(model.parameters(), params['lr'], params['alpha'], params['eps'])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6
     )

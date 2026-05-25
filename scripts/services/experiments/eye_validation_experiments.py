@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report
 from scripts.services.dataset_generation.train_data_loader import EyeQualityDataset, pg_load_training_data
 from torch.utils.data import DataLoader
 from scripts.models.EyeCroppValidator import LeNet, fit_model, evaluate
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import resnet34, ResNet34_Weights
 
 def imshow(img):
     """Display a tensor image"""
@@ -49,21 +49,21 @@ def plot_loss_curve(history, output_path="files/loss_curve.png"):
     print(f"Loss curve saved to {output_path}")
 
 if __name__ == "__main__":
-    model = resnet18(weights=ResNet18_Weights.DEFAULT)
+    model = resnet34(weights=ResNet34_Weights.DEFAULT)
     for param in model.parameters():
         param.requires_grad = False
     model.fc = nn.Linear(model.fc.in_features, 2)
 
     params = {
-            'lr': 1e-3, 
+            'lr': 3e-4, 
             'eps': 1e-8, 
-            'num_epochs': 100,
-            'betas': (0.9, 0.999),
+            'num_epochs': 20,
+            'alpha': 0.9,
             'batch_size': 32,
-            'model_name': 'ResNet',
+            'model_name': 'ResNet34v2',
             'dataset_version': 'v1.0',
             'image_size': (128, 96),
-            'optimizer': 'Adam',
+            'optimizer': 'AdamW',
             'loss': 'CrossEntropyLoss',
             'is_loss_weighted': True
         }
